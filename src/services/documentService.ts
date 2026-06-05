@@ -12,7 +12,7 @@ export async function getDocuments(): Promise<AdminDocument[]> {
 
     if (error) throw error;
     
-    // PERBAIKAN: Mapping 'created_at' dari Supabase menjadi 'uploadedAt' untuk UI
+    // Mapping 'created_at' dari Supabase menjadi 'uploadedAt' untuk UI
     return data.map((doc: any) => ({
       ...doc,
       uploadedAt: doc.created_at 
@@ -32,7 +32,6 @@ export async function saveDocument(
   url?: string
 ): Promise<AdminDocument | null> {
   try {
-    // A. Insert ke tabel master 'documents'
     const { data: docData, error: docError } = await supabase
       .from("documents")
       .insert([{ title: title.trim(), content: content.trim(), type, url }])
@@ -42,7 +41,6 @@ export async function saveDocument(
     if (docError) throw docError;
     const newDoc = docData as AdminDocument;
 
-    // B. Logika pemecahan teks (Chunking)
     const chunks: { source: string; text: string; url?: string }[] = [];
 
     if (type === "link") {
@@ -58,24 +56,23 @@ export async function saveDocument(
     } else {
       const paragraphs = newDoc.content
         .split(/\n\n+/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 30);
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 30);
 
       if (paragraphs.length === 0) {
         chunks.push({ source: newDoc.title, text: newDoc.content });
       } else {
-        paragraphs.forEach((p) => {
+        paragraphs.forEach((p: string) => {
           chunks.push({ source: newDoc.title, text: p });
         });
       }
     }
 
-    // C. Ubah setiap chunk jadi vektor dan siapkan data untuk di-insert
     const chunkInserts = await Promise.all(
       chunks.map(async (chunk) => {
         const embeddingVector = await embedText(chunk.text);
         return {
-          document_id: newDoc.id, // Relasi ke tabel master
+          document_id: newDoc.id,
           source: chunk.source,
           text: chunk.text,
           url: chunk.url,
@@ -84,7 +81,6 @@ export async function saveDocument(
       })
     );
 
-    // D. Insert semua chunks + vektor ke tabel 'document_chunks'
     const { error: chunkError } = await supabase
       .from("document_chunks")
       .insert(chunkInserts);
@@ -98,7 +94,7 @@ export async function saveDocument(
   }
 }
 
-// 3. Hapus dokumen (Otomatis menghapus chunks berkat "ON DELETE CASCADE" di SQL)
+// 3. Hapus dokumen
 export async function deleteDocument(id: string): Promise<boolean> {
   try {
     const { error } = await supabase
@@ -114,13 +110,12 @@ export async function deleteDocument(id: string): Promise<boolean> {
   }
 }
 
-// 4. Update dokumen (Update master -> Hapus chunks lama -> Buat chunks baru)
+// 4. Update dokumen
 export async function updateDocument(
   id: string,
   patch: { title?: string; content?: string; url?: string; type?: "text" | "pdf" | "link" }
 ): Promise<AdminDocument | null> {
   try {
-    // Ambil data lama dulu untuk referensi jika ada field yang tidak di-patch
     const { data: oldDoc, error: fetchError } = await supabase
       .from("documents")
       .select("*")
@@ -134,7 +129,6 @@ export async function updateDocument(
     const updatedType = patch.type !== undefined ? patch.type : oldDoc.type;
     const updatedUrl = patch.url !== undefined ? patch.url.trim() : oldDoc.url;
 
-    // A. Update tabel master
     const { data: updatedData, error: updateError } = await supabase
       .from("documents")
       .update({ title: updatedTitle, content: updatedContent, type: updatedType, url: updatedUrl })
@@ -144,7 +138,6 @@ export async function updateDocument(
 
     if (updateError) throw updateError;
 
-    // B. Hapus chunks lama (karena konten/judul berubah, vektornya sudah tidak valid)
     const { error: deleteChunkError } = await supabase
       .from("document_chunks")
       .delete()
@@ -152,7 +145,6 @@ export async function updateDocument(
 
     if (deleteChunkError) throw deleteChunkError;
 
-    // C. Buat ulang chunking dari teks yang baru (logika sama dengan saveDocument)
     const chunks: { source: string; text: string; url?: string }[] = [];
 
     if (updatedType === "link") {
@@ -167,19 +159,18 @@ export async function updateDocument(
     } else {
       const paragraphs = updatedContent
         .split(/\n\n+/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 30);
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 30);
 
       if (paragraphs.length === 0) {
         chunks.push({ source: updatedTitle, text: updatedContent });
       } else {
-        paragraphs.forEach((p) => {
+        paragraphs.forEach((p: string) => {
           chunks.push({ source: updatedTitle, text: p });
         });
       }
     }
 
-    // D. Embed & Insert chunks baru
     const chunkInserts = await Promise.all(
       chunks.map(async (chunk) => {
         const embeddingVector = await embedText(chunk.text);
