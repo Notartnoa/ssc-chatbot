@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Admin.css";
+import "./admin.css";
 import logoTelkom from "../assets/Logo Telkom.svg";
 
 const ADMIN_USER = "admin";
