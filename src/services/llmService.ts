@@ -15,7 +15,7 @@ const embeddingModel = genAI.getGenerativeModel({
 
 // Model chat: menyusun jawaban berdasarkan konteks dokumen
 const chatModel = genAI.getGenerativeModel({
-  model: "gemini-pro",
+  model: "gemini-2.5-flash",
   systemInstruction:
     "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
     "Tugasmu menjawab pertanyaan mahasiswa secara akurat berdasarkan informasi yang diberikan. " +
