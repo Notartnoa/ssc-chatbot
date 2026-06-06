@@ -52,7 +52,7 @@ export async function generateAnswer(
     return result.response.text();
 
   } catch (error: any) {
-    console.warn("Gemini limit/error, otomatis beralih ke Groq (Llama-3)...", error.message);
+    console.warn("Gemini limit/error, otomatis beralih ke Groq...", error.message);
 
     // === OPSI B: Kalau Gemini gagal/limit, otomatis panggil Groq ===
     try {
@@ -63,19 +63,20 @@ export async function generateAnswer(
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192", 
+          model: "llama-3.1-8b-instant", // Model Llama terbaru yang paling stabil
           messages: [
-            // Kirim aturan SSC ke Groq
             { role: "system", content: systemInstructionText },
-            // Kirim konteks dan pertanyaan user
             { role: "user", content: prompt }
           ],
-          temperature: 0.3 // Supaya jawabannya tidak terlalu halusinasi
+          temperature: 0.3
         })
       });
 
+      // CCTV Error: Tangkap alasan spesifik dari Groq jika ditolak
       if (!groqResponse.ok) {
-        throw new Error("Groq API juga gagal merespons.");
+        const errDetail = await groqResponse.json();
+        console.error("Detail Error dari Groq:", errDetail);
+        throw new Error(`Groq menolak request: ${errDetail.error?.message || "Bad Request"}`);
       }
 
       const groqData = await groqResponse.json();
