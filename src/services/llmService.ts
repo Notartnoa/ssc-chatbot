@@ -3,12 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
 const groqApiKey = import.meta.env.VITE_GROQ_API_KEY as string;
 
-if (!geminiApiKey) {
-  console.warn("VITE_GEMINI_API_KEY belum diisi di file .env");
-}
-if (!groqApiKey) {
-  console.warn("VITE_GROQ_API_KEY belum diisi di file .env");
-}
+if (!geminiApiKey) console.warn("VITE_GEMINI_API_KEY belum diisi di file .env");
+if (!groqApiKey) console.warn("VITE_GROQ_API_KEY belum diisi di file .env");
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
@@ -17,25 +13,33 @@ const embeddingModel = genAI.getGenerativeModel({
   model: "gemini-embedding-2",
 });
 
-// 2. FEW-SHOT PROMPTING: Kita beri "Mockup" teks agar AI meniru persis gaya formatnya
-const systemInstructionText = 
+// ============================================================================
+// 2A. PROMPT GEMINI (Natural & Bebas) - Kita kembalikan ke versi awal yang bagus
+// ============================================================================
+const geminiSystemInstruction = 
+  "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
+  "Tugasmu menjawab pertanyaan mahasiswa secara akurat berdasarkan informasi yang diberikan. " +
+  "ATURAN PENTING: " +
+  "1. Gunakan bahasa yang ramah, solutif, dan natural. Berikan formatting Markdown yang rapi (bold untuk menu/tombol, dan link yang bisa diklik) jika diperlukan. " +
+  "2. JANGAN PERNAH menyebutkan kata 'dokumen', 'konteks', 'database', atau 'sistem' dalam jawabanmu. " +
+  "3. Jika informasi tidak tersedia, arahkan ke IG @akademik.telkomsby atau email akademik@ittelkom-sby.ac.id.";
+
+// ============================================================================
+// 2B. PROMPT GROQ / LLAMA (Kaku & Cerewet) - Karena Llama butuh ancaman
+// ============================================================================
+const groqSystemInstruction = 
   "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
   "ATURAN FORMATTING (SANGAT WAJIB):\n" +
-  "1. Wajib tebalkan nama menu, nama tombol, atau status menggunakan bintang ganda. Contoh: klik tombol **Ajukan Surat**, pilih menu **Layanan**.\n" +
+  "1. Wajib tebalkan nama menu, nama tombol, atau status menggunakan bintang ganda (**teks**).\n" +
   "2. Jika ada URL, WAJIB ubah menjadi format markdown link yang bisa diklik. Contoh: [Panduan SSC](https://linktr.ee/laa.upps.sby).\n" +
   "3. Gunakan list angka (1. 2. 3.) dan bullet (-).\n\n" +
-  "CONTOH JAWABAN YANG BENAR:\n" +
-  "Berikut langkah-langkahnya:\n" +
-  "1. Buka menu **Surat Keterangan**.\n" +
-  "2. Klik tombol **Ajukan Surat**.\n" +
-  "Untuk info lebih lanjut, silakan cek [Tautan Panduan Ini](https://linktr.ee/laa.upps.sby).\n\n" +
   "ATURAN LAIN:\n" +
   "JANGAN sebutkan kata 'dokumen', 'database', atau 'sistem'. Jika tidak tahu, arahkan ke IG @akademik.telkomsby.";
 
 // 3. Model chat utama: Gemini 2.5 Flash
 const chatModel = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
-  systemInstruction: systemInstructionText,
+  systemInstruction: geminiSystemInstruction, // <-- Pakai prompt yang natural
 });
 
 export async function embedText(text: string): Promise<number[]> {
@@ -52,10 +56,7 @@ export async function generateAnswer(
   try {
     // === OPSI A: Coba gunakan Gemini ===
     const result = await chatModel.generateContent(prompt);
-    
-    // Log di console browser untuk debugging
     console.log("🟢 STATUS AI: Dijawab oleh GEMINI");
-    
     return result.response.text();
 
   } catch (error: any) {
@@ -72,7 +73,7 @@ export async function generateAnswer(
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: systemInstructionText },
+            { role: "system", content: groqSystemInstruction }, // <-- Pakai prompt yang cerewet
             { role: "user", content: prompt }
           ],
           temperature: 0.3
@@ -87,8 +88,6 @@ export async function generateAnswer(
       const answer = groqData.choices[0].message.content;
       
       console.log("🟠 STATUS AI: Dijawab oleh GROQ (LLAMA-3.3)");
-
-      // WATERMARK UI: Menambahkan teks kecil di akhir chat supaya mahasiswa/developer tahu
       return answer + "\n\n*(⚡ Fallback: Dijawab oleh Llama-3)*";
 
     } catch (backupError) {
