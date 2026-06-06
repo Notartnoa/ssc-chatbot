@@ -12,55 +12,56 @@ if (!groqApiKey) {
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-// 1. Model embedding: WAJIB pakai Gemini agar dimensi vektor (3072) tetap cocok dengan database
+// 1. Model embedding: WAJIB pakai Gemini
 const embeddingModel = genAI.getGenerativeModel({
   model: "gemini-embedding-2",
 });
 
-// 2. Simpan instruksi sistem ke variabel agar bisa dipakai oleh Gemini dan Groq
-// 2. Simpan instruksi sistem ke variabel agar bisa dipakai oleh Gemini dan Groq
+// 2. FEW-SHOT PROMPTING: Kita beri "Mockup" teks agar AI meniru persis gaya formatnya
 const systemInstructionText = 
   "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
-  "Tugasmu menjawab pertanyaan mahasiswa secara akurat berdasarkan informasi yang diberikan. " +
-  "ATURAN PENTING: " +
-  "1. Gunakan bahasa yang ramah, solutif, dan natural. " +
-  "2. FORMATTING & MARKDOWN (SANGAT WAJIB): " +
-  "- Selalu gunakan list angka (1. 2. 3.) untuk urutan langkah-langkah. " +
-  "- Gunakan bullet points (-) untuk daftar opsi atau syarat. " +
-  "- WAJIB gunakan huruf tebal (**tebal**) untuk menyoroti nama menu, tombol, status, atau kata kunci krusial (contoh: menu **Layanan**, tombol **Simpan**, status **Waiting**). " +
-  "- JIKA ADA TAUTAN ATAU URL, WAJIB ubah menjadi clickable link dengan format Markdown [Teks Tampilan](URL yang lengkap dengan https://). JANGAN biarkan URL tampil sebagai teks biasa. " +
-  "3. JANGAN PERNAH menyebutkan kata 'dokumen', 'konteks', 'database', atau 'sistem' dalam jawabanmu. Bersikaplah seolah-olah kamu memang mengetahui informasi tersebut secara langsung. " +
-  "4. Jika informasi yang ditanyakan tidak tersedia, JANGAN mengarang jawaban. Arahkan mahasiswa untuk menghubungi SSC secara langsung via Instagram @akademik.telkomsby atau email akademik@ittelkom-sby.ac.id.";
-    
+  "ATURAN FORMATTING (SANGAT WAJIB):\n" +
+  "1. Wajib tebalkan nama menu, nama tombol, atau status menggunakan bintang ganda. Contoh: klik tombol **Ajukan Surat**, pilih menu **Layanan**.\n" +
+  "2. Jika ada URL, WAJIB ubah menjadi format markdown link yang bisa diklik. Contoh: [Panduan SSC](https://linktr.ee/laa.upps.sby).\n" +
+  "3. Gunakan list angka (1. 2. 3.) dan bullet (-).\n\n" +
+  "CONTOH JAWABAN YANG BENAR:\n" +
+  "Berikut langkah-langkahnya:\n" +
+  "1. Buka menu **Surat Keterangan**.\n" +
+  "2. Klik tombol **Ajukan Surat**.\n" +
+  "Untuk info lebih lanjut, silakan cek [Tautan Panduan Ini](https://linktr.ee/laa.upps.sby).\n\n" +
+  "ATURAN LAIN:\n" +
+  "JANGAN sebutkan kata 'dokumen', 'database', atau 'sistem'. Jika tidak tahu, arahkan ke IG @akademik.telkomsby.";
+
 // 3. Model chat utama: Gemini 2.5 Flash
 const chatModel = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
   systemInstruction: systemInstructionText,
 });
 
-// Ubah satu potongan teks menjadi vektor (TETAP GEMINI)
 export async function embedText(text: string): Promise<number[]> {
   const result = await embeddingModel.embedContent(text);
   return result.embedding.values;
 }
 
-// Susun jawaban berdasarkan pertanyaan + konteks dokumen relevan (DENGAN FALLBACK GROQ)
 export async function generateAnswer(
   question: string,
   contextText: string
 ): Promise<string> {
-  // Susun prompt yang menggabungkan konteks dan pertanyaan
   const prompt = `Konteks:\n${contextText}\n\nPertanyaan: ${question}`;
 
   try {
     // === OPSI A: Coba gunakan Gemini ===
     const result = await chatModel.generateContent(prompt);
+    
+    // Log di console browser untuk debugging
+    console.log("🟢 STATUS AI: Dijawab oleh GEMINI");
+    
     return result.response.text();
 
   } catch (error: any) {
     console.warn("Gemini limit/error, otomatis beralih ke Groq...", error.message);
 
-    // === OPSI B: Kalau Gemini gagal/limit, otomatis panggil Groq ===
+    // === OPSI B: Kalau Gemini limit, panggil Groq ===
     try {
       const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -69,7 +70,7 @@ export async function generateAnswer(
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // <-- Menggunakan model dari referensi praktikum!
+          model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: systemInstructionText },
             { role: "user", content: prompt }
@@ -78,19 +79,21 @@ export async function generateAnswer(
         })
       });
 
-      // CCTV Error: Tangkap alasan spesifik dari Groq jika gagal
       if (!groqResponse.ok) {
-        const errDetail = await groqResponse.json();
-        console.error("Detail Error dari Groq:", errDetail);
-        throw new Error(`Groq menolak request: ${errDetail.error?.message || "Bad Request"}`);
+        throw new Error("Groq API gagal merespons.");
       }
 
       const groqData = await groqResponse.json();
-      return groqData.choices[0].message.content;
+      const answer = groqData.choices[0].message.content;
+      
+      console.log("🟠 STATUS AI: Dijawab oleh GROQ (LLAMA-3.3)");
+
+      // WATERMARK UI: Menambahkan teks kecil di akhir chat supaya mahasiswa/developer tahu
+      return answer + "\n\n*(⚡ Fallback: Dijawab oleh Llama-3)*";
 
     } catch (backupError) {
       console.error("Semua layanan AI gagal merespons:", backupError);
-      return "Mohon maaf, layanan chatbot kami sedang sibuk. Silakan coba beberapa saat lagi atau hubungi langsung via Instagram @akademik.telkomsby.";
+      return "Mohon maaf, layanan chatbot kami sedang sibuk. Silakan coba beberapa saat lagi atau hubungi IG @akademik.telkomsby.";
     }
   }
 }
