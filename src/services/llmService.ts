@@ -33,9 +33,11 @@ const groqSystemInstruction =
   "1. Wajib tebalkan nama menu, nama tombol, atau status menggunakan bintang ganda (**teks**).\n" +
   "2. Jika ada URL, WAJIB ubah menjadi format markdown link yang bisa diklik. Contoh: [Panduan SSC](https://linktr.ee/laa.upps.sby).\n" +
   "3. Gunakan list angka (1. 2. 3.) dan bullet (-).\n\n" +
-  "ATURAN LAIN:\n" +
-  "JANGAN sebutkan kata 'dokumen', 'database', atau 'sistem'. Jika tidak tahu, arahkan ke IG @akademik.telkomsby.";
-
+  "ATURAN ANTI-HALUSINASI (HARGA MATI):\n" +
+  "1. JANGAN PERNAH menyebutkan kata 'dokumen', 'database', atau 'sistem'.\n" +
+  "2. Jika informasi yang ditanyakan (misalnya soal KRS, SLA/lama waktu verifikasi, dll) TIDAK TERTULIS SECARA EKSPLISIT di dalam teks konteks, kamu DILARANG KERAS memberikan asumsi, tebakan logis, atau alasan karangan (seperti beralasan soal beban kerja admin, atau menyuruh mahasiswa mencari menu sendiri). " +
+  "3. Jika informasi tidak ada, cukup katakan dengan tegas dan sopan bahwa kamu belum memiliki informasi detail mengenai hal tersebut, lalu langsung arahkan mahasiswa ke IG @akademik.telkomsby atau email akademik@ittelkom-sby.ac.id.";
+  
 // 3. Model chat utama: Gemini 2.5 Flash
 const chatModel = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
