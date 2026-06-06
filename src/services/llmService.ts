@@ -63,7 +63,7 @@ export async function generateAnswer(
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // Model Llama terbaru yang paling stabil
+          model: "llama-3.3-70b-versatile", // <-- Menggunakan model dari referensi praktikum!
           messages: [
             { role: "system", content: systemInstructionText },
             { role: "user", content: prompt }
@@ -72,7 +72,7 @@ export async function generateAnswer(
         })
       });
 
-      // CCTV Error: Tangkap alasan spesifik dari Groq jika ditolak
+      // CCTV Error: Tangkap alasan spesifik dari Groq jika gagal
       if (!groqResponse.ok) {
         const errDetail = await groqResponse.json();
         console.error("Detail Error dari Groq:", errDetail);
