@@ -14,7 +14,6 @@ function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Override App.css overflow:hidden — tanpa ini halaman login tidak bisa di-scroll
     document.documentElement.style.overflowY = "auto";
     document.body.style.overflowY = "auto";
     const root = document.getElementById("root");
@@ -44,11 +43,9 @@ function AdminLogin() {
 
   return (
     <div className="admin-page login-layout-centered">
-      {/* Efek pendaran cahaya di background agar tidak sepi */}
       <div className="login-ambient-glow"></div>
       
       <div className="login-card">
-        {/* Branding */}
         <div className="login-brand">
           <img src={logoTelkom} alt="Telkom University" className="login-telkom-logo" />
           <h1 className="login-title">Welcome back</h1>
@@ -80,7 +77,6 @@ function AdminLogin() {
             />
           </div>
 
-          {/* Opsi Tambahan */}
           <div className="login-options">
             <label className="remember-me">
               <input type="checkbox" disabled={isLoading} />

@@ -6,7 +6,6 @@ import App from './App.tsx'
 import AdminLogin from './pages/AdminLogin.tsx'
 import AdminDashboard from './pages/AdminDashboard.tsx'
 
-// Guard: redirect ke /admin kalau belum login
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuth = sessionStorage.getItem('ssc_admin_auth') === 'true'
   return isAuth ? <>{children}</> : <Navigate to="/admin" replace />

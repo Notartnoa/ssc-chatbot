@@ -120,7 +120,6 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                     msg.content
                   )}
 
-                  {/* Sources — maks 3 chip, sisanya +N */}
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
                     const visible = msg.sources.slice(0, MAX_VISIBLE_SOURCES);
                     const hidden = msg.sources.length - visible.length;

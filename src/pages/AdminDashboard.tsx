@@ -5,7 +5,6 @@ import { getDocuments, saveDocument, deleteDocument, updateDocument } from "../s
 import type { AdminDocument } from "../types/Message";
 import "./admin.css";
 
-// @ts-ignore
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -24,7 +23,6 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
 type UploadMode = "doc" | "link";
 
-// ── Vuesax Icons ───────────────────────────────────────────
 const IcDocumentUpload = ({ size = 26 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <path d="M9 11V17L11 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -118,7 +116,6 @@ const IcSave = () => (
   </svg>
 );
 
-// ── Component ───────────────────────────────────────────────
 function AdminDashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -126,19 +123,16 @@ function AdminDashboard() {
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
   const [uploadMode, setUploadMode] = useState<UploadMode>("doc");
 
-  // Upload doc state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [docFileType, setDocFileType] = useState<"text" | "pdf">("text");
   const [isParsing, setIsParsing] = useState(false);
 
-  // Link state
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkDesc, setLinkDesc] = useState("");
 
-  // Edit modal state
   const [editDoc, setEditDoc] = useState<AdminDocument | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -151,7 +145,6 @@ function AdminDashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upload" | "documents">("upload");
 
-  // MENGAMBIL DATA SUPABASE SAAT HALAMAN DILAKSES (ASYNC)
   useEffect(() => {
     if (sessionStorage.getItem("ssc_admin_auth") !== "true") navigate("/admin");
     
@@ -172,7 +165,6 @@ function AdminDashboard() {
     };
   }, [navigate]);
 
-  // Lock body scroll when edit modal is open
   useEffect(() => {
     if (editDoc) {
       document.body.style.overflow = "hidden";
@@ -184,7 +176,6 @@ function AdminDashboard() {
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(""), 3500); };
   const showError   = (msg: string) => { setErrorMsg(msg);   setTimeout(() => setErrorMsg(""),   5000); };
 
-  // ── Handlers ─────────────────────────────────────────────
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -235,7 +226,6 @@ function AdminDashboard() {
     }
   };
 
-  // UPLOAD DOKUMEN KE SUPABASE (ASYNC)
   const handleUploadDoc = async () => {
     if (!title.trim())               { showError("Judul dokumen tidak boleh kosong."); return; }
     if (!content.trim())             { showError("Konten dokumen tidak boleh kosong."); return; }
@@ -262,7 +252,6 @@ function AdminDashboard() {
     showSuccess("Dokumen berhasil disimpan ke knowledge base!");
   };
 
-  // UPLOAD LINK KE SUPABASE (ASYNC)
   const handleSaveLink = async () => {
     if (!linkTitle.trim()) { showError("Nama link tidak boleh kosong."); return; }
     if (!linkUrl.trim())   { showError("URL tidak boleh kosong."); return; }
@@ -290,7 +279,6 @@ function AdminDashboard() {
     showSuccess("Link berhasil disimpan ke knowledge base!");
   };
 
-  // MENGHAPUS DARI SUPABASE (ASYNC)
   const handleDelete = async (id: string) => {
     await deleteDocument(id);
     const updatedDocs = await getDocuments();
@@ -299,7 +287,6 @@ function AdminDashboard() {
     showSuccess("Berhasil dihapus.");
   };
 
-  // ── Edit handlers ────────────────────────────────────────
   const handleOpenEdit = (doc: AdminDocument) => {
     setEditDoc(doc);
     setEditTitle(doc.title);
@@ -314,7 +301,6 @@ function AdminDashboard() {
     setEditUrl("");
   };
 
-  // EDIT DATA SUPABASE (ASYNC)
   const handleSaveEdit = async () => {
     if (!editDoc) return;
     if (!editTitle.trim()) { showError("Judul tidak boleh kosong."); return; }
@@ -363,7 +349,6 @@ function AdminDashboard() {
   return (
     <div className="admin-page dashboard">
 
-      {/* ── Header Baru bergaya Chatbot ── */}
       <div className="chat-header-minimal">
         <div className="header-brand">
           <span className="brand-text">TANYA</span>
@@ -390,7 +375,6 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Toast ── */}
       {successMsg && (
         <div className="toast toast-success"><IcTickCircle />{successMsg}</div>
       )}
@@ -406,7 +390,6 @@ function AdminDashboard() {
 
       <main className="admin-main">
 
-        {/* ── Stats ── */}
         <div className="admin-stats">
           <div className="stat-card">
             <span className="stat-number">{docCount}</span>
@@ -418,7 +401,6 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Main Tabs ── */}
         <div className="admin-tabs">
           <button className={`admin-tab ${activeTab === "upload" ? "active" : ""}`} onClick={() => setActiveTab("upload")}>
             <IcAdd /> Tambah Konten
@@ -429,7 +411,6 @@ function AdminDashboard() {
           </button>
         </div>
 
-        {/* ═══════════ TAB: TAMBAH KONTEN ═══════════ */}
         {activeTab === "upload" && (
           <div className="admin-card">
             <div className="card-header">
@@ -437,7 +418,6 @@ function AdminDashboard() {
               <p>Pilih jenis konten yang ingin kamu tambahkan ke chatbot.</p>
             </div>
 
-            {/* Mode Selector */}
             <div className="mode-cards">
               <button className={`mode-card ${uploadMode === "doc" ? "active" : ""}`} onClick={() => setUploadMode("doc")}>
                 <div className="mode-card-left">
@@ -467,7 +447,6 @@ function AdminDashboard() {
 
             <div className="mode-separator" />
 
-            {/* Form: Upload Dokumen */}
             {uploadMode === "doc" && (
               <div className="mode-form">
                 <div
@@ -517,7 +496,6 @@ function AdminDashboard() {
               </div>
             )}
 
-            {/* Form: Tambah Link */}
             {uploadMode === "link" && (
               <div className="mode-form">
                 <div className="link-info-box">
@@ -552,7 +530,6 @@ function AdminDashboard() {
           </div>
         )}
 
-        {/* ═══════════ TAB: KNOWLEDGE BASE ═══════════ */}
         {activeTab === "documents" && (
           <div className="admin-card">
             <div className="card-header">
@@ -572,7 +549,6 @@ function AdminDashboard() {
                 {documents.map((doc) => (
                   <div key={doc.id} className={`doc-item ${doc.type === "link" ? "doc-item-link" : ""}`}>
 
-                    {/* ── Baris atas: icon + judul+meta + tombol ── */}
                     <div className="doc-item-top">
                       <div className="doc-icon">
                         {doc.type === "link" ? <IcLinkSmall /> : <IcDocument />}
@@ -609,14 +585,12 @@ function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* ── Full-width URL (hanya tipe link) ── */}
                     {doc.type === "link" && doc.url && (
                       <a href={doc.url} target="_blank" rel="noopener noreferrer" className="doc-url">
                         {doc.url}
                       </a>
                     )}
 
-                    {/* ── Full-width preview/deskripsi ── */}
                     {doc.content && doc.content !== `Link menuju ${doc.title}` && (
                       <p className="doc-preview">{doc.content}</p>
                     )}
@@ -629,12 +603,10 @@ function AdminDashboard() {
         )}
       </main>
 
-      {/* ═══════════ EDIT MODAL ═══════════ */}
       {editDoc && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && handleCloseEdit()}>
           <div className="modal-card">
 
-            {/* Modal Header */}
             <div className="modal-header">
               <div className="modal-header-left">
                 <div className="modal-header-icon">
@@ -648,10 +620,8 @@ function AdminDashboard() {
               <button className="modal-close-btn" onClick={handleCloseEdit}><IcClose /></button>
             </div>
 
-            {/* Modal Body */}
             <div className="modal-body">
 
-              {/* Edit URL (hanya untuk type link) */}
               {editDoc.type === "link" && (
                 <div className="form-group">
                   <label>URL / Link</label>
@@ -662,13 +632,11 @@ function AdminDashboard() {
                 </div>
               )}
 
-              {/* Edit Title */}
               <div className="form-group">
                 <label>Judul <span className="required">*</span></label>
                 <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Judul dokumen atau link" disabled={isSavingEdit} />
               </div>
 
-              {/* Edit Content */}
               <div className="form-group">
                 <label>
                   {editDoc.type === "link" ? "Deskripsi" : "Konten Dokumen"}
@@ -691,7 +659,6 @@ function AdminDashboard() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="modal-footer">
               <button className="modal-cancel-btn" onClick={handleCloseEdit} disabled={isSavingEdit}>
                 Batal

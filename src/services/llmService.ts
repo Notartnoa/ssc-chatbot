@@ -8,14 +8,10 @@ if (!groqApiKey) console.warn("VITE_GROQ_API_KEY belum diisi di file .env");
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-// 1. Model embedding: WAJIB pakai Gemini
 const embeddingModel = genAI.getGenerativeModel({
   model: "gemini-embedding-2",
 });
 
-// ============================================================================
-// 2A. PROMPT GEMINI (Natural & Bebas) - Kita kembalikan ke versi awal yang bagus
-// ============================================================================
 const geminiSystemInstruction = 
   "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
   "Tugasmu menjawab pertanyaan mahasiswa secara akurat berdasarkan informasi yang diberikan. " +
@@ -24,9 +20,6 @@ const geminiSystemInstruction =
   "2. JANGAN PERNAH menyebutkan kata 'dokumen', 'konteks', 'database', atau 'sistem' dalam jawabanmu. " +
   "3. Jika informasi tidak tersedia, arahkan ke IG @akademik.telkomsby atau email akademik@ittelkom-sby.ac.id.";
 
-// ============================================================================
-// 2B. PROMPT GROQ / LLAMA (Algorithmic & Decision Tree Approach)
-// ============================================================================
 const groqSystemInstruction = 
   "Kamu adalah asisten layanan akademik Student Service Center (SSC) Telkom University Surabaya. " +
   "ATURAN FORMATTING:\n" +
@@ -41,10 +34,9 @@ const groqSystemInstruction =
   "IF (Informasi tersedia di teks dan sesuai prosedur):\n" +
   "THEN: Jawab pertanyaan dengan ramah dan solutif. JANGAN PERNAH menyebutkan kata 'dokumen', 'teks', 'database', atau 'konteks'.";
    
-// 3. Model chat utama: Gemini 2.5 Flash
 const chatModel = genAI.getGenerativeModel({
   model: "gemini-2.5-flash",
-  systemInstruction: geminiSystemInstruction, // <-- Pakai prompt yang natural
+  systemInstruction: geminiSystemInstruction, 
 });
 
 export async function embedText(text: string): Promise<number[]> {
@@ -59,7 +51,6 @@ export async function generateAnswer(
   const prompt = `Konteks:\n${contextText}\n\nPertanyaan: ${question}`;
 
   try {
-    // === OPSI A: Coba gunakan Gemini ===
     const result = await chatModel.generateContent(prompt);
     console.log("🟢 STATUS AI: Dijawab oleh GEMINI");
     return result.response.text();
@@ -67,7 +58,6 @@ export async function generateAnswer(
   } catch (error: any) {
     console.warn("Gemini limit/error, otomatis beralih ke Groq...", error.message);
 
-    // === OPSI B: Kalau Gemini limit, panggil Groq ===
     try {
       const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -78,7 +68,7 @@ export async function generateAnswer(
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: groqSystemInstruction }, // <-- Pakai prompt yang cerewet
+            { role: "system", content: groqSystemInstruction }, 
             { role: "user", content: prompt }
           ],
           temperature: 0.3

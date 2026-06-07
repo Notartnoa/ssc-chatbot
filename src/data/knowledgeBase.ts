@@ -1,8 +1,5 @@
 import type { Source } from "../types/Message";
 
-// Knowledge base = kumpulan potongan (chunk) dokumen akademik.
-// CONTOH dummy dulu. Nanti diganti potongan dokumen TUS asli.
-// Tiap entri punya bentuk yang sama dengan tipe Source.
 export const knowledgeBase: Source[] = [
   {
     id: "doc-ssc",

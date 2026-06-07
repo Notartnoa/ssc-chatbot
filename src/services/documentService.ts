@@ -2,7 +2,6 @@ import { supabase } from "./supabaseClient";
 import { embedText } from "./llmService";
 import type { AdminDocument } from "../types/Message";
 
-// 1. Ambil semua dokumen dari Supabase
 export async function getDocuments(): Promise<AdminDocument[]> {
   try {
     const { data, error } = await supabase
@@ -12,7 +11,6 @@ export async function getDocuments(): Promise<AdminDocument[]> {
 
     if (error) throw error;
     
-    // Mapping 'created_at' dari Supabase menjadi 'uploadedAt' untuk UI
     return data.map((doc: any) => ({
       ...doc,
       uploadedAt: doc.created_at 
@@ -24,7 +22,6 @@ export async function getDocuments(): Promise<AdminDocument[]> {
   }
 }
 
-// 2. Simpan dokumen baru + Chunking + Embedding
 export async function saveDocument(
   title: string,
   content: string,
@@ -94,7 +91,6 @@ export async function saveDocument(
   }
 }
 
-// 3. Hapus dokumen
 export async function deleteDocument(id: string): Promise<boolean> {
   try {
     const { error } = await supabase
@@ -110,7 +106,6 @@ export async function deleteDocument(id: string): Promise<boolean> {
   }
 }
 
-// 4. Update dokumen
 export async function updateDocument(
   id: string,
   patch: { title?: string; content?: string; url?: string; type?: "text" | "pdf" | "link" }

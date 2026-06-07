@@ -26,7 +26,7 @@ function App() {
       const botMessage: Message = {
         role: "model",
         content: answer,
-        sources, // ← dokumen yang dipakai untuk menjawab
+        sources, 
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (err) {
