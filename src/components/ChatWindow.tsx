@@ -127,62 +127,50 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
                     
-                    // 1. DEDUPLIKASI: Filter agar nama sumber yang sama tidak di-print berulang kali
-                    const uniqueSources = msg.sources.filter((val, index, self) =>
+                    // 1. FILTER: Ambil yang HANYA berupa dokumen PDF saja
+                    const pdfSources = msg.sources.filter(src => {
+                      const lowerName = src.source.toLowerCase();
+                      return lowerName.includes('panduan') || lowerName.includes('surat') || lowerName.endsWith('.pdf');
+                    });
+
+                    // 2. DEDUPLIKASI: Hapus sumber PDF yang kembar
+                    const uniqueSources = pdfSources.filter((val, index, self) =>
                       index === self.findIndex((t) => t.source === val.source)
                     );
+
+                    // JIKA KOSONG (karena semuanya berupa link web), jangan tampilkan blok "Sumber" sama sekali
+                    if (uniqueSources.length === 0) return null;
 
                     const visible = uniqueSources.slice(0, MAX_VISIBLE_SOURCES);
                     const hidden = uniqueSources.length - visible.length;
 
                     return (
                       <div className="sources-block">
-                        <span className="sources-title">Sumber:</span>
+                        <span className="sources-title">Sumber Dokumen:</span>
                         <div className="sources-chips">
                           {visible.map((src) => {
                             const sourceName = src.source;
                             
-                            // 2. LOGIKA PINTAR: Cek apakah ini PDF atau Artikel Web biasa
-                            // Asumsinya, file PDF kamu mengandung kata "panduan", "surat", atau berakhiran ".pdf"
-                            const isPdfDocument = 
-                              sourceName.toLowerCase().includes('panduan') || 
-                              sourceName.toLowerCase().includes('surat') || 
-                              sourceName.toLowerCase().endsWith('.pdf');
-
-                            if (isPdfDocument) {
-                              // Jika ini PDF, rakit link Supabase-nya
-                              let fileName = sourceName;
-                              if (!fileName.toLowerCase().endsWith('.pdf')) {
-                                fileName += '.pdf';
-                              }
-                              const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(fileName)}`;
-
-                              return (
-                                <a
-                                  key={src.id}
-                                  href={publicUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="source-chip"
-                                  title={`Buka Dokumen: ${fileName}`}
-                                  style={{ textDecoration: "none" }}
-                                >
-                                  <span className="source-chip-label">{sourceName}</span>
-                                </a>
-                              );
-                            } else {
-                              // Jika ini BUKAN PDF (misal: "TOSS..."), jadikan label biasa yang tidak bisa diklik
-                              return (
-                                <span
-                                  key={src.id}
-                                  className="source-chip"
-                                  title={`Sumber Artikel/Link: ${sourceName}`}
-                                  style={{ cursor: "default", opacity: 0.85, borderStyle: "dashed" }}
-                                >
-                                  <span className="source-chip-label">{sourceName}</span>
-                                </span>
-                              );
+                            // Rakit URL dengan ekstensi .pdf
+                            let fileName = sourceName;
+                            if (!fileName.toLowerCase().endsWith('.pdf')) {
+                              fileName += '.pdf';
                             }
+                            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(fileName)}`;
+
+                            return (
+                              <a
+                                key={src.id}
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="source-chip"
+                                title={`Buka Dokumen: ${fileName}`}
+                                style={{ textDecoration: "none" }}
+                              >
+                                <span className="source-chip-label">{sourceName}</span>
+                              </a>
+                            );
                           })}
                           {hidden > 0 && (
                             <span
