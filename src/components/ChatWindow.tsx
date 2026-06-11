@@ -12,6 +12,9 @@ const MAX_VISIBLE_SOURCES = 3;
 function ChatWindow({ messages, isLoading }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const bucketName = "documents"; 
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
@@ -127,15 +130,24 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                       <div className="sources-block">
                         <span className="sources-title">Sumber:</span>
                         <div className="sources-chips">
-                          {visible.map((src) => (
-                            <span
-                              key={src.id}
-                              className="source-chip"
-                              title={src.source}
-                            >
-                              <span className="source-chip-label">{src.source}</span>
-                            </span>
-                          ))}
+                          {visible.map((src) => {
+                            // Merakit URL Publik Supabase secara dinamis
+                            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(src.source)}`;
+
+                            return (
+                              <a
+                                key={src.id}
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="source-chip"
+                                title={`Buka Dokumen: ${src.source}`}
+                                style={{ textDecoration: "none" }}
+                              >
+                                <span className="source-chip-label">{src.source}</span>
+                              </a>
+                            );
+                          })}
                           {hidden > 0 && (
                             <span
                               className="source-chip source-chip-more"
