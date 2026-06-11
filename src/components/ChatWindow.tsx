@@ -12,6 +12,7 @@ const MAX_VISIBLE_SOURCES = 3;
 function ChatWindow({ messages, isLoading }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Panggil URL Supabase dari file .env
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const bucketName = "documents"; 
 
@@ -124,24 +125,34 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                   )}
 
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
-                    const visible = msg.sources.slice(0, MAX_VISIBLE_SOURCES);
-                    const hidden = msg.sources.length - visible.length;
+                    // DEDUPLIKASI
+                    const uniqueSources = msg.sources.filter((val, index, self) =>
+                      index === self.findIndex((t) => t.source === val.source)
+                    );
+
+                    const visible = uniqueSources.slice(0, MAX_VISIBLE_SOURCES);
+                    const hidden = uniqueSources.length - visible.length;
+
                     return (
                       <div className="sources-block">
                         <span className="sources-title">Sumber:</span>
                         <div className="sources-chips">
                           {visible.map((src) => {
-                            // Merakit URL Publik Supabase secara dinamis
-                            const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(src.source)}`;
+                            // CEK APAKAH LINK ATAU DOKUMEN
+                            const isExternalLink = src.source.startsWith("http://") || src.source.startsWith("https://");
+                            
+                            const href = isExternalLink
+                              ? src.source
+                              : `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(src.source.endsWith('.pdf') ? src.source : src.source + '.pdf')}`;
 
                             return (
                               <a
                                 key={src.id}
-                                href={publicUrl}
+                                href={href}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="source-chip"
-                                title={`Buka Dokumen: ${src.source}`}
+                                title={isExternalLink ? "Buka Tautan" : `Buka Dokumen: ${src.source}`}
                                 style={{ textDecoration: "none" }}
                               >
                                 <span className="source-chip-label">{src.source}</span>
@@ -151,7 +162,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                           {hidden > 0 && (
                             <span
                               className="source-chip source-chip-more"
-                              title={msg.sources.slice(MAX_VISIBLE_SOURCES).map(s => s.source).join(", ")}
+                              title={uniqueSources.slice(MAX_VISIBLE_SOURCES).map(s => s.source).join(", ")}
                             >
                               +{hidden}
                             </span>
