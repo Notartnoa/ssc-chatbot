@@ -14,6 +14,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
   // Panggil URL Supabase dari file .env
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  // Nama bucket sudah disesuaikan dengan Supabase milikmu
   const bucketName = "documents"; 
 
   useEffect(() => {
@@ -125,7 +126,8 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                   )}
 
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
-                    // DEDUPLIKASI
+                    
+                    // 1. DEDUPLIKASI: Filter agar nama sumber yang sama tidak di-print berulang kali
                     const uniqueSources = msg.sources.filter((val, index, self) =>
                       index === self.findIndex((t) => t.source === val.source)
                     );
@@ -138,26 +140,49 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                         <span className="sources-title">Sumber:</span>
                         <div className="sources-chips">
                           {visible.map((src) => {
-                            // CEK APAKAH LINK ATAU DOKUMEN
-                            const isExternalLink = src.source.startsWith("http://") || src.source.startsWith("https://");
+                            const sourceName = src.source;
                             
-                            const href = isExternalLink
-                              ? src.source
-                              : `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(src.source.endsWith('.pdf') ? src.source : src.source + '.pdf')}`;
+                            // 2. LOGIKA PINTAR: Cek apakah ini PDF atau Artikel Web biasa
+                            // Asumsinya, file PDF kamu mengandung kata "panduan", "surat", atau berakhiran ".pdf"
+                            const isPdfDocument = 
+                              sourceName.toLowerCase().includes('panduan') || 
+                              sourceName.toLowerCase().includes('surat') || 
+                              sourceName.toLowerCase().endsWith('.pdf');
 
-                            return (
-                              <a
-                                key={src.id}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="source-chip"
-                                title={isExternalLink ? "Buka Tautan" : `Buka Dokumen: ${src.source}`}
-                                style={{ textDecoration: "none" }}
-                              >
-                                <span className="source-chip-label">{src.source}</span>
-                              </a>
-                            );
+                            if (isPdfDocument) {
+                              // Jika ini PDF, rakit link Supabase-nya
+                              let fileName = sourceName;
+                              if (!fileName.toLowerCase().endsWith('.pdf')) {
+                                fileName += '.pdf';
+                              }
+                              const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(fileName)}`;
+
+                              return (
+                                <a
+                                  key={src.id}
+                                  href={publicUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="source-chip"
+                                  title={`Buka Dokumen: ${fileName}`}
+                                  style={{ textDecoration: "none" }}
+                                >
+                                  <span className="source-chip-label">{sourceName}</span>
+                                </a>
+                              );
+                            } else {
+                              // Jika ini BUKAN PDF (misal: "TOSS..."), jadikan label biasa yang tidak bisa diklik
+                              return (
+                                <span
+                                  key={src.id}
+                                  className="source-chip"
+                                  title={`Sumber Artikel/Link: ${sourceName}`}
+                                  style={{ cursor: "default", opacity: 0.85, borderStyle: "dashed" }}
+                                >
+                                  <span className="source-chip-label">{sourceName}</span>
+                                </span>
+                              );
+                            }
                           })}
                           {hidden > 0 && (
                             <span
