@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
+import { createClient } from "@supabase/supabase-js";
 import { getDocuments, saveDocument, deleteDocument, updateDocument } from "../services/documentService";
 import type { AdminDocument } from "../types/Message";
 import "./admin.css";
@@ -23,6 +24,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
 type UploadMode = "doc" | "link";
 
+// ================= ICONS =================
 const IcDocumentUpload = ({ size = 26 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <path d="M9 11V17L11 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -123,6 +125,9 @@ function AdminDashboard() {
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
   const [uploadMode, setUploadMode] = useState<UploadMode>("doc");
 
+  // Tambahan State: Untuk menyimpan wujud asli file PDF
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState("");
@@ -179,13 +184,19 @@ function AdminDashboard() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const isTxt = file.name.toLowerCase().endsWith(".txt");
     const isPdf = file.name.toLowerCase().endsWith(".pdf");
+    
     if (!isTxt && !isPdf) {
       showError("Hanya file .txt atau .pdf yang didukung.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
+    // SIMPAN FILE FISIK KE DALAM STATE
+    setSelectedFile(file);
+
     setFileName(file.name);
     if (!title) {
       const cleanName = file.name
@@ -197,6 +208,7 @@ function AdminDashboard() {
         .trim();
       setTitle(cleanName || file.name.replace(/\.(txt|pdf)$/i, ""));
     }
+    
     if (isTxt) {
       setDocFileType("text");
       const reader = new FileReader();
@@ -210,7 +222,7 @@ function AdminDashboard() {
         const text = await extractTextFromPdf(file);
         if (!text || text.length < 10) {
           showError("Teks tidak ditemukan — PDF ini mungkin berupa scan/gambar.");
-          setFileName(""); setDocFileType("text");
+          setFileName(""); setDocFileType("text"); setSelectedFile(null);
           if (fileInputRef.current) fileInputRef.current.value = "";
         } else {
           setContent(text);
@@ -218,7 +230,7 @@ function AdminDashboard() {
         }
       } catch (err: any) {
         showError(`Gagal membaca PDF: ${err?.message ?? "Error tidak dikenal"}.`);
-        setFileName(""); setDocFileType("text");
+        setFileName(""); setDocFileType("text"); setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       } finally {
         setIsParsing(false);
@@ -232,11 +244,51 @@ function AdminDashboard() {
     if (content.trim().length < 50)  { showError("Konten terlalu pendek (minimal 50 karakter)."); return; }
     
     setIsUploading(true);
+
+    // ==========================================
+    // 1. UPLOAD FILE FISIK KE SUPABASE STORAGE
+    // ==========================================
+    if (selectedFile) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Pastikan nama filenya cocok dengan judul yang akan dibaca Chatbot
+        let storageFileName = title.trim();
+        const ext = docFileType === "pdf" ? ".pdf" : ".txt";
+        if (!storageFileName.toLowerCase().endsWith(ext)) {
+          storageFileName += ext;
+        }
+
+        const { error: storageError } = await supabase.storage
+          .from("documents") // Sesuai dengan bucket yang kita buat tadi
+          .upload(storageFileName, selectedFile, {
+            cacheControl: "3600",
+            upsert: true // Kalau ada nama sama, otomatis di-replace (ditimpa)
+          });
+
+        if (storageError) {
+          console.error("Storage Error:", storageError);
+          showError(`Gagal upload file fisik ke lemari: ${storageError.message}`);
+          setIsUploading(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Storage Exception:", err);
+        showError("Terjadi kesalahan saat upload file ke storage.");
+        setIsUploading(false);
+        return;
+      }
+    }
     
+    // ==========================================
+    // 2. SIMPAN TEKS KE DATABASE (KODINGAN LAMA)
+    // ==========================================
     const result = await saveDocument(title, content, docFileType);
     
     if (!result) {
-      showError("Gagal menyimpan ke database! Cek console/inspect element.");
+      showError("Gagal menyimpan teks ke database! Cek console.");
       setIsUploading(false);
       return;
     }
@@ -244,12 +296,13 @@ function AdminDashboard() {
     const updatedDocs = await getDocuments();
     setDocuments(updatedDocs);
     
-    setTitle(""); setContent(""); setFileName(""); setDocFileType("text");
+    // Reset Form
+    setTitle(""); setContent(""); setFileName(""); setDocFileType("text"); setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     
     setIsUploading(false);
     setActiveTab("documents");
-    showSuccess("Dokumen berhasil disimpan ke knowledge base!");
+    showSuccess("Dokumen dan File Fisik berhasil disimpan!");
   };
 
   const handleSaveLink = async () => {
