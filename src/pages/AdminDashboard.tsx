@@ -283,7 +283,7 @@ function AdminDashboard() {
     }
     
     // ==========================================
-    // 2. SIMPAN TEKS KE DATABASE (KODINGAN LAMA)
+    // 2. SIMPAN TEKS KE DATABASE
     // ==========================================
     const result = await saveDocument(title, content, docFileType);
     
@@ -333,11 +333,42 @@ function AdminDashboard() {
   };
 
   const handleDelete = async (id: string) => {
+    // 1. Cari dokumen yang mau dihapus untuk tahu judul dan tipenya
+    const docToDelete = documents.find(d => d.id === id);
+
+    // 2. Eksekusi hapus file fisik dari Supabase Storage (hanya jika tipe pdf atau text)
+    if (docToDelete && (docToDelete.type === "pdf" || docToDelete.type === "text")) {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Rekonstruksi nama file persis seperti saat upload
+        let storageFileName = docToDelete.title.trim();
+        const ext = docToDelete.type === "pdf" ? ".pdf" : ".txt";
+        if (!storageFileName.toLowerCase().endsWith(ext)) {
+          storageFileName += ext;
+        }
+
+        // Hapus file dari bucket 'documents'
+        const { error: storageError } = await supabase.storage
+          .from("documents")
+          .remove([storageFileName]);
+
+        if (storageError) {
+          console.error("Gagal menghapus file dari Storage:", storageError);
+        }
+      } catch (err) {
+        console.error("Terjadi kesalahan saat koneksi ke Storage:", err);
+      }
+    }
+
+    // 3. Eksekusi hapus dari Database/Vector DB
     await deleteDocument(id);
     const updatedDocs = await getDocuments();
     setDocuments(updatedDocs);
     setDeleteConfirm(null);
-    showSuccess("Berhasil dihapus.");
+    showSuccess("Berhasil dihapus!");
   };
 
   const handleOpenEdit = (doc: AdminDocument) => {

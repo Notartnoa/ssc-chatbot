@@ -127,10 +127,10 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
                     
-                    // 1. FILTER: Ambil yang HANYA berupa dokumen PDF saja
+                    // 1. FILTER: Ambil yang BUKAN link web (Asumsi: Selain link http = Dokumen PDF)
                     const pdfSources = msg.sources.filter(src => {
-                      const lowerName = src.source.toLowerCase();
-                      return lowerName.includes('panduan') || lowerName.includes('surat') || lowerName.endsWith('.pdf');
+                      const lowerName = src.source?.toLowerCase() || "";
+                      return !lowerName.startsWith('http');
                     });
 
                     // 2. DEDUPLIKASI: Hapus sumber PDF yang kembar
@@ -148,7 +148,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                       <div className="sources-block">
                         <span className="sources-title">Sumber Dokumen:</span>
                         <div className="sources-chips">
-                          {visible.map((src) => {
+                          {visible.map((src, idx) => {
                             const sourceName = src.source;
                             
                             // Rakit URL dengan ekstensi .pdf
@@ -160,7 +160,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
                             return (
                               <a
-                                key={src.id}
+                                key={idx}
                                 href={publicUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
