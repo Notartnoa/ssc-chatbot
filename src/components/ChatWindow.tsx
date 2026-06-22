@@ -127,18 +127,30 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
 
                   {msg.role === "model" && msg.sources && msg.sources.length > 0 && (() => {
                     
-                    // 1. FILTER: Ambil yang BUKAN link web (Asumsi: Selain link http = Dokumen PDF)
-                    const pdfSources = msg.sources.filter(src => {
+                    // 1. FILTER: LOGIKA KETAT UNTUK MEMBUANG LINK WEB
+                    const pdfSources = msg.sources.filter((src: any) => {
+                      // a. Kalau dari backend metadatanya bawa tulisan type 'link' atau bawa 'url', langsung tendang!
+                      if (src.type === "link" || src.url) return false;
+                      
                       const lowerName = src.source?.toLowerCase() || "";
-                      return !lowerName.startsWith('http');
+                      
+                      // b. Kalau judulnya beneran diawali http, tendang juga!
+                      if (lowerName.startsWith('http')) return false;
+
+                      // c. Penjaga gawang terakhir: Jaga-jaga kalau metadata dari backend bocor/hilang, 
+                      // kita filter manual judul yang 100% kita tahu itu adalah link web (bukan PDF)
+                      if (lowerName === "toss (telkom one stop services)") return false;
+
+                      // Sisa dari filter ini dijamin 99% adalah nama file dokumen PDF/TXT sungguhan
+                      return true;
                     });
 
                     // 2. DEDUPLIKASI: Hapus sumber PDF yang kembar
-                    const uniqueSources = pdfSources.filter((val, index, self) =>
+                    const uniqueSources = pdfSources.filter((val: any, index: number, self: any[]) =>
                       index === self.findIndex((t) => t.source === val.source)
                     );
 
-                    // JIKA KOSONG (karena semuanya berupa link web), jangan tampilkan blok "Sumber" sama sekali
+                    // JIKA KOSONG, sembunyikan kotak "Sumber Dokumen" sepenuhnya
                     if (uniqueSources.length === 0) return null;
 
                     const visible = uniqueSources.slice(0, MAX_VISIBLE_SOURCES);
@@ -148,10 +160,10 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                       <div className="sources-block">
                         <span className="sources-title">Sumber Dokumen:</span>
                         <div className="sources-chips">
-                          {visible.map((src, idx) => {
+                          {visible.map((src: any, idx: number) => {
                             const sourceName = src.source;
                             
-                            // Rakit URL dengan ekstensi .pdf
+                            // Rakit URL ke Storage dengan ekstensi .pdf
                             let fileName = sourceName;
                             if (!fileName.toLowerCase().endsWith('.pdf')) {
                               fileName += '.pdf';
@@ -175,7 +187,7 @@ function ChatWindow({ messages, isLoading }: ChatWindowProps) {
                           {hidden > 0 && (
                             <span
                               className="source-chip source-chip-more"
-                              title={uniqueSources.slice(MAX_VISIBLE_SOURCES).map(s => s.source).join(", ")}
+                              title={uniqueSources.slice(MAX_VISIBLE_SOURCES).map((s: any) => s.source).join(", ")}
                             >
                               +{hidden}
                             </span>
